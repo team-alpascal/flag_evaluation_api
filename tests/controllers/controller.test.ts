@@ -26,7 +26,7 @@ const mockRuleEmailEquals: EvaluationRule = {
   name: 'evaluation rule',
   contextKind: 'user',
   attribute: 'email',
-  operator: 'equals',
+  operator: '=',
   values: ['user@example.com'],
   flagKey: 'test-key',
   variant: 'red'
