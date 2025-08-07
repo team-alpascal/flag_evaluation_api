@@ -1,6 +1,5 @@
 import { type Operator } from "../types/evaluationTypes";
 
-//TODO: add remaining operators
 /**
  * Returns a function that takes in two values and compares them 
  * according to the specified operator
@@ -10,11 +9,40 @@ import { type Operator } from "../types/evaluationTypes";
 export const getEvaluationFunction = (operator: Operator) => {
   switch (operator) {
     case '=':
-      return (a: unknown, b: unknown) => a === b;
+      return (a: unknown, b: unknown) => String(a) === String(b);
+    
     case '!=':
-      return (a: unknown, b: unknown) => a !== b;
+      return (a: unknown, b: unknown) => String(a) !== String(b);
+    
+    case '>':
+      return (a: unknown, b: unknown) => {
+        const numA = Number(a);
+        const numB = Number(b);
+        return !isNaN(numA) && !isNaN(numB) && numA > numB;
+      };
+    
+    case '<':
+      return (a: unknown, b: unknown) => {
+        const numA = Number(a);
+        const numB = Number(b);
+        return !isNaN(numA) && !isNaN(numB) && numA < numB;
+      };
+    
+    case '>=':
+      return (a: unknown, b: unknown) => {
+        const numA = Number(a);
+        const numB = Number(b);
+        return !isNaN(numA) && !isNaN(numB) && numA >= numB;
+      };
+    
+    case '<=':
+      return (a: unknown, b: unknown) => {
+        const numA = Number(a);
+        const numB = Number(b);
+        return !isNaN(numA) && !isNaN(numB) && numA <= numB;
+      };
 
     default:
-      throw new Error('Invalid operator') //TODO: check best practice here 
+      throw new Error(`Invalid operator: ${operator}`);
   }
-}
+};
