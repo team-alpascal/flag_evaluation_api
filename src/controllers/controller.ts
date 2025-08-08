@@ -4,6 +4,7 @@ const db = new DBPersistence();
 import { type Flag, type FlagType} from '../types/flagTypes';
 import { FlagResolution, type EvaluationContext, type EvaluationRule, type Operator} from '../types/evaluationTypes';
 import { getEvaluationFunction } from '../utils/operators';
+import { distributeHashToBuckets } from '../utils/hashAlg';
 
 /**
  * Checks whether the result of performing a comparison operation on the 
@@ -26,31 +27,60 @@ const matchesRule = (contextValue: unknown, operator: Operator, ruleValue: unkno
  * @param flag the flag to evaluate
  * @returns the matching variant, falling back to default variant if no rule applies
  */
-export const evaluateFlag = async (evaluationContext: EvaluationContext, flag: Flag): Promise<FlagResolution>=> {
-  const evaluationRules = await db.getMatchingRules(flag.flagKey) // TODO: add call to look up all matching values for each rule
-
-  for (let i = 0; i < evaluationRules.length; i++) {
-    const rule = evaluationRules[i];
+export const evaluateFlag = async (evaluationContext: EvaluationContext, flag: Flag): Promise<FlagResolution> => {
+  const evaluationRules = await db.getMatchingRules(flag.flagKey);
+  
+  for (const rule of evaluationRules) {
     const values = await db.getRuleValues(rule.rule_name);
     const attributeName = rule.attribute;
-    const contextValue = evaluationContext[attributeName];
-    for (let j = 0; j < values.length; j++) {
-      const value = values[j].val
-      if (matchesRule(contextValue, rule.operator, value)) { 
+    
+    const contextValue = evaluationContext.user && attributeName in evaluationContext.user 
+      ? evaluationContext.user[attributeName as keyof typeof evaluationContext.user] 
+      : undefined;
+
+    // percentage rollout for everyone
+    if (attributeName === 'Everyone') {
+      const userKey = evaluationContext.targetingKey;
+      
+      if (userKey === '') continue;
+      
+      const bucket = distributeHashToBuckets(userKey, 100);
+      if (bucket < rule.percentage) {
         return {
           value: flag.variants[rule.variant],
           variant: rule.variant,
-          reason: "TARGETING_MATCH"
+          reason: 'PERCENTAGE_ROLLOUT_EVERYONE',
+        };
+      }
+    // percentage rollout for targeted users
+    } else {
+      if (!values.length) continue;
+      
+      for (const valObj of values) {
+        const value = valObj.val;
+        if (matchesRule(contextValue, rule.operator, value)) {
+          const userKey = evaluationContext.targetingKey;
+          if (userKey === '') continue;
+          
+          const bucket = distributeHashToBuckets(userKey, 100);
+          if (bucket < rule.percentage) {
+            return {
+              value: flag.variants[rule.variant],
+              variant: rule.variant,
+              reason: 'TARGETING_AND_PERCENTAGE_ROLLOUT',
+            };
+          }
         }
       }
     }
   }
+
   return {
     value: flag.variants[flag.defaultVariant],
     variant: flag.defaultVariant,
-    reason: "DEFAULT"
-  }
-}
+    reason: 'DEFAULT',
+  };
+};
 
 //TODO: find cleaner way to handle this
 const disabledFlagValues = {
