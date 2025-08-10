@@ -4,7 +4,7 @@ const db = new DBPersistence();
 import { type Flag, type FlagType} from '../types/flagTypes';
 import { FlagResolution, type EvaluationContext, type EvaluationRule, type Operator} from '../types/evaluationTypes';
 import { getEvaluationFunction } from '../utils/operators';
-import { distributeHashToBuckets } from '../utils/hashAlg';
+import { distributeHashToBuckets } from '../utils/hashingAlg';
 
 /**
  * Checks whether the result of performing a comparison operation on the 
