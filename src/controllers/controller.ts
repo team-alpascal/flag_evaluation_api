@@ -6,6 +6,22 @@ import { FlagResolution, type EvaluationContext, type EvaluationRule, type Opera
 import { getEvaluationFunction } from '../utils/operators';
 import { distributeHashToBuckets } from '../utils/hashingAlg';
 import { EVERYONE, Reason } from '../conventions/conventions';
+import { FlagValue } from '@openfeature/server-sdk';
+
+/**
+ * Finds the corresponding variant name for a flag that was evaluated with
+ * a fallback value 
+ * @param flag the flag being evaluated
+ * @param value the value for which to lookup the variant name
+ * @returns the name of the variant matching the provided value, or undefined if no match is found 
+ */
+const resolveVariantFromValue = (flag: Flag, value: FlagValue) => {
+  let matchingVariant;
+  matchingVariant = Object.keys(flag.variants).find(variant => {
+    return flag.variants[variant] === value;
+  })
+  return matchingVariant;
+}
 /**
  * Checks whether the result of performing a comparison operation on the 
  * value of an attribute for the current evaluation context and a rule value produces a match 
@@ -146,15 +162,17 @@ export const getFlagEvaluationConfig = async (req: Request, res: Response, next:
       let flagResolution: FlagResolution;
 
       if (!flag.isEnabled) {
-        //TODO: add variant! 
+        const value = disabledFlagValues[flag.flagType] as FlagType;
+        const variant = resolveVariantFromValue(flag, value);
         flagResolution = {
-          value: disabledFlagValues[flag.flagType] as FlagType,
+          value,
+          variant,
           reason: Reason.DISABLED,
         }
       } else {
-        flagResolution = await evaluateFlag(context, flag as Flag)
+        flagResolution = await evaluateFlag(context, flag as Flag);
       }
-      flagEvaluations[flag.flagKey] = flagResolution
+      flagEvaluations[flag.flagKey] = flagResolution;
     }
     res.status(200).json(flagEvaluations)
   }
