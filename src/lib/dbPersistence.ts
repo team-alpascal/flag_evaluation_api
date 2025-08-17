@@ -7,7 +7,7 @@ const { Client } = require('pg');
  * @param object the object to transform
  * @returns the new object with keys in camelCase format
  */
-function setFlagKeysToCamelCase(object: Record<string, any>) {
+function setKeysToCamelCase(object: Record<string, any>) {
   const newObject: Record<string, any> = {}
   const keys = Object.keys(object)
   const newKeys = keys.map(key => {
@@ -56,7 +56,7 @@ class DBPersistence {
     const result = await executeQuery(QUERY);
 
     return result.rows.map((row: Flag) => {
-      return setFlagKeysToCamelCase(row)
+      return setKeysToCamelCase(row)
     });
   }
   
@@ -64,18 +64,18 @@ class DBPersistence {
     const QUERY = `SELECT flag_key, flag_type, variants, created_at, updated_at, default_variant, is_enabled FROM ${FLAGS}
                     WHERE flag_key = $1`;
     const result = await executeQuery(QUERY, flagKey);
-    return result.rows.length > 0 ? setFlagKeysToCamelCase(result.rows[0]) : null;
+    return result.rows.length > 0 ? setKeysToCamelCase(result.rows[0]) : null;
   }
 
   async getMatchingRules(flagKey: string) {
-    //TODO: query rules table for all rules that match the given flag key and context kind
     const QUERY = 
     `SELECT * FROM rules JOIN rule_values
      ON rules.id = rule_values.rule_id
      WHERE rules.flag_key = $1
     `
     const result = await executeQuery(QUERY, flagKey);
-    return result.rows;
+    const camelCaseRules = result.rows.map((row: Record<string, any>) => setKeysToCamelCase(row))
+    return camelCaseRules;
     
   }
 
@@ -85,7 +85,8 @@ class DBPersistence {
     const ruleId = result.rows[0].id;
     const GET_VALUES_QUERY = `SELECT * FROM rule_values WHERE rule_values.rule_id = $1`
     const valuesResult = await executeQuery(GET_VALUES_QUERY, ruleId);
-    return valuesResult.rows;
+    const camelCaseRuleValues = valuesResult.rows.map((row: Record<string, any>) => setKeysToCamelCase(row).val)
+    return camelCaseRuleValues;
   }
 }
 
