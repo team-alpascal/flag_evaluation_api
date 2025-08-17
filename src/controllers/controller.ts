@@ -20,6 +20,14 @@ const matchesRule = (contextValue: unknown, operator: Operator, ruleValue: unkno
 }
 
 //TODO: investigate why variants type in flag type is a single Variant instead of arr or obj with multiple
+/**
+ * Implements rollouts by resolving whether a flag should evaluate as specified by the given rule 
+ * for a context identified by `targetingKey`. Uses a simple hash to distribute contexts evenly.
+ * @param targetingKey the unique identifier of the context to resolve rollout for
+ * @param rule the rule being applied for the rollout
+ * @param flag the flag to evaluate in the context of the evaluation context and rule
+ * @returns `FlagResolution` object if the given context matches the rule, else null
+ */
 const resolveFlagRollout = (targetingKey: string, rule: EvaluationRule, flag: Flag): FlagResolution | null => {
   const NUMBER_OF_BUCKETS = 100;
   const bucket = distributeHashToBuckets(targetingKey, NUMBER_OF_BUCKETS);
@@ -121,6 +129,13 @@ export const getFlagEvaluation = async (req: Request, res: Response, next: NextF
 
 }
 
+/**
+ * Retrieves all flag evaluations matching the context provided in the `Request`
+ * @param req the incoming `Request`. Should contain a `context` object in the body
+ * @param res the response, with status 200 and a json object containing all matching 
+ * flag evaluations upon successful retrieval 
+ * @param next 
+ */
 export const getFlagEvaluationConfig = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const flagEvaluations: Record<string, FlagResolution> = {}
@@ -131,6 +146,7 @@ export const getFlagEvaluationConfig = async (req: Request, res: Response, next:
       let flagResolution: FlagResolution;
 
       if (!flag.isEnabled) {
+        //TODO: add variant! 
         flagResolution = {
           value: disabledFlagValues[flag.flagType] as FlagType,
           reason: Reason.DISABLED,
